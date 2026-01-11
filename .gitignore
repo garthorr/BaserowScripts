@@ -23,13 +23,14 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# Virtual environments (keep local venv but exclude from git)
+# Note: Run ./setup.sh to create venv with all dependencies
 venv/
 ENV/
 env/
 
 # IDE
-.vscode/
+# .vscode/ is tracked (contains Python interpreter settings)
 .idea/
 *.swp
 *.swo

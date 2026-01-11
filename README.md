@@ -2,6 +2,17 @@
 
 Python scripts for managing Baserow tables, including deduplication and contact synchronization.
 
+## Quick Start
+
+**New to this project? Start here:** → [QUICKSTART.md](QUICKSTART.md)
+
+Or run the setup script to get started immediately:
+```bash
+./setup.sh          # Linux/macOS
+# or
+setup.bat           # Windows
+```
+
 ## Available Scripts
 
 1. **deduplicate_table.py** - Deduplicate rows in a Baserow table while preserving link fields
