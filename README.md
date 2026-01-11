@@ -1,4 +1,15 @@
-# Baserow Deduplication Script
+# Baserow Scripts
+
+Python scripts for managing Baserow tables, including deduplication and contact synchronization.
+
+## Available Scripts
+
+1. **deduplicate_table.py** - Deduplicate rows in a Baserow table while preserving link fields
+2. **update_contacts.py** - Sync contacts from Excel to Baserow, marking inactive contacts
+
+---
+
+# Table Deduplication Script
 
 A Python script to deduplicate rows in a Baserow table based on a specified identifying field, while intelligently preserving and merging link fields from duplicate records.
 
@@ -227,3 +238,234 @@ For issues or questions:
 2. Review the example output to understand expected behavior
 3. Run with `--verbose` flag for detailed debugging information
 4. Create an issue in this repository with the error message and context
+
+---
+
+# Contacts Sync Script
+
+Synchronize contacts from an Excel spreadsheet to a Baserow contacts table. Adds new contacts from the spreadsheet and marks existing contacts not in the spreadsheet as inactive.
+
+## Features
+
+- **Excel Integration**: Reads contacts from .xls or .xlsx files
+- **Smart Sync**: Adds new contacts, reactivates existing ones, deactivates missing ones
+- **Email-Based Matching**: Uses email as unique identifier (case-insensitive)
+- **Safe by Default**: Runs in dry-run mode by default
+- **Comprehensive Logging**: Detailed logging of all sync operations
+- **Error Handling**: Robust error handling with detailed error messages
+
+## Setup
+
+The update_contacts.py script uses the same installation as the deduplication script. Just ensure your `.env` file has the contacts table ID:
+
+```env
+BASEROW_API_URL=https://api.baserow.io
+BASEROW_API_TOKEN=your_api_token_here
+CONTACTS_TABLE_ID=67890
+```
+
+## Usage
+
+### Dry Run (Preview Changes)
+
+Always start with a dry run:
+
+```bash
+python update_contacts.py --excel-file enrollment.xlsx --dry-run
+```
+
+This will:
+- Read contacts from the Excel file
+- Compare with existing Baserow contacts
+- Show what would be added, activated, or deactivated
+- **Not make any actual changes**
+
+### Perform the Sync
+
+After reviewing the dry run output:
+
+```bash
+python update_contacts.py --excel-file enrollment.xlsx --no-dry-run
+```
+
+You'll be prompted to confirm before any changes are made.
+
+### Command Line Options
+
+```
+--excel-file FILE          (Required) Path to Excel file (.xls or .xlsx)
+--table-id ID             Contacts table ID (overrides .env)
+--first-name-field FIELD  First name field in Baserow (default: "First Name")
+--last-name-field FIELD   Last name field in Baserow (default: "Last Name")
+--email-field FIELD       Email field in Baserow (default: "Email")
+--active-field FIELD      Active checkbox field in Baserow (default: "Active")
+--dry-run                 Preview changes (default: True)
+--no-dry-run              Actually perform the sync
+--api-url URL             Baserow API URL (overrides .env)
+--api-token TOKEN         API token (overrides .env)
+--verbose                 Enable detailed debug logging
+```
+
+### Examples
+
+**Basic sync with default field names:**
+```bash
+python update_contacts.py --excel-file current_enrollment.xlsx
+```
+
+**Sync with custom field names:**
+```bash
+python update_contacts.py --excel-file enrollment.xlsx \
+  --first-name-field "FirstName" \
+  --last-name-field "LastName" \
+  --email-field "EmailAddress" \
+  --active-field "IsActive"
+```
+
+**Use specific table ID:**
+```bash
+python update_contacts.py --excel-file enrollment.xlsx --table-id 12345
+```
+
+## Excel File Format
+
+Your Excel file should have these columns (column names are case-insensitive):
+
+| First Name | Last Name | Email |
+|------------|-----------|-------|
+| John | Doe | john.doe@example.com |
+| Jane | Smith | jane.smith@example.com |
+
+Additional columns (like Unit, Position) are okay but will be ignored.
+
+### Required Columns
+
+The script expects these columns in your Excel file:
+- **first name** - Contact's first name
+- **last name** - Contact's last name
+- **email** - Contact's email address (used as unique identifier)
+
+Rows missing any of these fields will be skipped with a warning.
+
+## How It Works
+
+1. **Read Excel**: Loads contacts from spreadsheet, normalizes email addresses
+2. **Fetch Baserow Contacts**: Retrieves all existing contacts from your table
+3. **Compare & Analyze**:
+   - Contacts in Excel but not in Baserow → **Add as new** (Active = true)
+   - Contacts in both with Active = false → **Mark active** (Active = true)
+   - Contacts in Baserow but not in Excel with Active = true → **Mark inactive** (Active = false)
+   - Contacts in both with Active = true → **No change**
+4. **Apply Changes**: Creates, updates contacts as needed
+5. **Report Results**: Shows detailed statistics
+
+## Baserow Table Requirements
+
+Your Baserow contacts table should have these fields:
+
+| Field Name | Field Type | Notes |
+|------------|------------|-------|
+| First Name | Text | Required |
+| Last Name | Text | Required |
+| Email | Email or Text | Required, used for matching |
+| Active | Checkbox | Required, tracks enrollment status |
+
+You can customize field names using command-line options.
+
+## Example Output
+
+```
+============================================================
+Starting contacts sync (dry_run=True)
+Excel file: enrollment.xlsx
+============================================================
+Reading contacts from: enrollment.xlsx
+Read 5 valid contacts from Excel
+Fetched 200 contacts (total: 200)
+Total contacts in Baserow: 3
+
+============================================================
+ANALYZING CHANGES
+============================================================
+Will mark as active: jane.smith@example.com
+Will add new contact: bob.johnson@example.com
+Will add new contact: alice.williams@example.com
+Will add new contact: charlie.brown@example.com
+
+Checking for contacts to mark inactive...
+Will mark as inactive: old.user@example.com
+
+============================================================
+SYNC SUMMARY
+============================================================
+Contacts in Excel: 5
+Contacts in Baserow: 3
+New contacts to add: 3
+Contacts to mark active: 1
+Contacts to mark inactive: 1
+[DRY RUN] No changes were made
+============================================================
+```
+
+## Common Scenarios
+
+### Scenario 1: New Enrollment Period
+You have a fresh enrollment spreadsheet and want to:
+- Add all new enrollees
+- Mark previous enrollees who didn't re-enroll as inactive
+
+```bash
+python update_contacts.py --excel-file new_enrollment.xlsx --no-dry-run
+```
+
+### Scenario 2: Updating Existing Contacts
+Some contacts exist but are marked inactive. The sync will:
+- Reactivate them if they're in the new spreadsheet
+- Add any genuinely new contacts
+
+```bash
+python update_contacts.py --excel-file updated_list.xlsx --no-dry-run
+```
+
+### Scenario 3: Multiple Enrollment Files
+Process multiple spreadsheets by running the script multiple times. The Active field will reflect the most recent run.
+
+## Troubleshooting
+
+### "Excel file not found"
+Check the file path. Use absolute paths or ensure you're in the correct directory.
+
+### "Missing required columns: {'email'}"
+Your Excel file is missing one of the required columns. Column names should be "First Name", "Last Name", and "Email" (case-insensitive).
+
+### "Row X has no email, skipping"
+Some rows in your Excel file have empty email fields. These rows are skipped automatically.
+
+### "Failed to create contact"
+Check that:
+1. Your API token has write permissions
+2. All required fields exist in your Baserow table
+3. Field names match (or use --first-name-field etc. to specify)
+
+## Important Notes
+
+- **Email is Unique**: Contacts are matched by email address (case-insensitive)
+- **Backup First**: Always backup your table or test on a copy first
+- **Active Field**: The script manages the Active checkbox - existing values will be overwritten
+- **No Deletion**: Contacts are never deleted, only marked inactive
+- **Dry Run Default**: Script defaults to dry-run mode for safety
+- **Excel Format**: Supports both .xls and .xlsx files
+
+## Testing
+
+A test suite is included to verify functionality:
+
+```bash
+python test_update_contacts.py
+```
+
+This runs unit tests with mocked API calls to ensure the sync logic works correctly.
+
+## License
+
+MIT License - Feel free to use and modify as needed.

@@ -38,3 +38,9 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Test files
+test_*.xlsx
+test_*.xls
+*.xlsx
+*.xls
